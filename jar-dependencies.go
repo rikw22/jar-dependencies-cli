@@ -25,34 +25,40 @@ var regex1 = regexp.MustCompile(`(.*)(?:-)([0-9]+\.[0-9]+(\.[0-9]+)?(\.[0-9]+)?)
 // 	- javassist-3.27.0-GA
 var regex2 = regexp.MustCompile(`(.*)(?:-)([0-9]+\.[0-9]+(\.[0-9]+)?)(\.|-)+[a-zA-Z]+$`)
 
+func processDependencyFilename(filename string) Dependency {
+	packageName := strings.Replace(filename, "BOOT-INF/lib/", "", -1)
+	packageName = strings.Replace(packageName, "WEB-INF/lib/", "", -1)
+	packageName = strings.Replace(packageName, "WEB-INF/lib-provided/", "", -1)
+
+	FullName := packageName
+
+	packageName = strings.TrimSuffix(packageName, ".jar")
+
+	Version := ""
+
+	matched1 := regex1.FindStringSubmatch(packageName)
+	if matched1 != nil {
+		packageName = matched1[1]
+		Version = matched1[2]
+	}
+
+	matched2 := regex2.FindStringSubmatch(packageName)
+	if matched2 != nil {
+		packageName = matched2[1]
+		Version = matched2[2]
+	}
+
+	return Dependency{Name: packageName, Version: Version, FullName: FullName}
+}
+
 func processJarFile(reader *zip.ReadCloser) []Dependency {
 	var dependencies []Dependency
 
 	// 3. Iterate over jar/war files inside the archive and unzip each of them
 	for _, f := range reader.File {
 		if strings.HasPrefix(f.Name, "BOOT-INF/lib/") && strings.HasSuffix(f.Name, ".jar") {
-			packageName := strings.Replace(f.Name, "BOOT-INF/lib/", "", -1)
-
-			FullName := packageName
-
-			packageName = strings.TrimSuffix(packageName, ".jar")
-
-			Version := ""
-
-			matched1 := regex1.FindStringSubmatch(packageName)
-			if matched1 != nil {
-				packageName = matched1[1]
-				Version = matched1[2]
-			}
-
-			matched2 := regex2.FindStringSubmatch(packageName)
-			if matched2 != nil {
-				packageName = matched2[1]
-				Version = matched2[2]
-			}
-
-			dependecy := Dependency{Name: packageName, Version: Version, FullName: FullName}
-			dependencies = append(dependencies, dependecy)
+			dependency := processDependencyFilename(f.Name)
+			dependencies = append(dependencies, dependency)
 		}
 	}
 	return dependencies
@@ -64,53 +70,13 @@ func processWarFile(reader *zip.ReadCloser) []Dependency {
 	// 3. Iterate over jar/war files inside the archive and unzip each of them
 	for _, f := range reader.File {
 		if strings.HasPrefix(f.Name, "WEB-INF/lib/") && strings.HasSuffix(f.Name, ".jar") {
-			packageName := strings.Replace(f.Name, "WEB-INF/lib/", "", -1)
-
-			FullName := packageName
-
-			packageName = strings.TrimSuffix(packageName, ".jar")
-
-			Version := ""
-
-			matched1 := regex1.FindStringSubmatch(packageName)
-			if matched1 != nil {
-				packageName = matched1[1]
-				Version = matched1[2]
-			}
-
-			matched2 := regex2.FindStringSubmatch(packageName)
-			if matched2 != nil {
-				packageName = matched2[1]
-				Version = matched2[2]
-			}
-
-			dependecy := Dependency{Name: packageName, Version: Version, FullName: FullName}
-			dependencies = append(dependencies, dependecy)
+			dependency := processDependencyFilename(f.Name)
+			dependencies = append(dependencies, dependency)
 		}
 
 		if strings.HasPrefix(f.Name, "WEB-INF/lib-provided/") && strings.HasSuffix(f.Name, ".jar") {
-			packageName := strings.Replace(f.Name, "WEB-INF/lib-provided/", "", -1)
-
-			FullName := packageName
-
-			packageName = strings.TrimSuffix(packageName, ".jar")
-
-			Version := ""
-
-			matched1 := regex1.FindStringSubmatch(packageName)
-			if matched1 != nil {
-				packageName = matched1[1]
-				Version = matched1[2]
-			}
-
-			matched2 := regex2.FindStringSubmatch(packageName)
-			if matched2 != nil {
-				packageName = matched2[1]
-				Version = matched2[2]
-			}
-
-			dependecy := Dependency{Name: packageName, Version: Version, FullName: FullName}
-			dependencies = append(dependencies, dependecy)
+			dependency := processDependencyFilename(f.Name)
+			dependencies = append(dependencies, dependency)
 		}
 	}
 	return dependencies
